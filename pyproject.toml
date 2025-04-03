@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eest-fuzz"
+version = "0.0.1"
+authors = [
+    { name="Sam Wilson", email="sam@binarycake.ca" },
+]
+description = "Fuzzing utilities"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3"
+]
+
+# [project.urls]
+# Homepage = "https://github.com/pypa/sampleproject"
+# Issues = "https://github.com/pypa/sampleproject/issues"
+
+dependencies = [
+    "ethereum-execution-spec-tests @ git+https://github.com/ethereum/execution-spec-tests@4521b62c3b1d0ed44e8ea1a688b86b61b7563ed7",
+    "atheris~=2.3",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.3.2,<9",
+    "types-atheris~=2.3",
+    "hypothesis~=6.127",
+]
+
+[project.scripts]
+eest-fuzz-structure = "eest_fuzz.cmd.structure:main"
+eest-fuzz-destructure = "eest_fuzz.cmd.destructure:main"
+eest-fuzz-self = "eest_fuzz.cmd.fuzz_self:main"
+eest-fuzz-eels = "eest_fuzz.cmd.fuzz_eels:main"
