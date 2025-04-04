@@ -30,6 +30,7 @@ from pathlib import Path
 from ethereum_test_exceptions import engine_api as ea
 from struct import pack
 from ethereum_test_fixtures.state import StateFixture, FixtureForkPost, FixtureTransaction, AccessList
+from ethereum_test_fixtures.common import FixtureAuthorizationTuple
 
 
 T = TypeVar("T", bound=BaseModel)
@@ -230,6 +231,7 @@ def _structure_state_fixture(type_: Union["_Annotation", Type[Q]], data: FuzzedD
     value = []
     tx_data = []
     access_lists = []
+    authorization_list = []
 
     for _ in range(count):
         post.append(structure(FixtureForkPost, data))
@@ -237,6 +239,7 @@ def _structure_state_fixture(type_: Union["_Annotation", Type[Q]], data: FuzzedD
         value.append(structure(bt.ZeroPaddedHexNumber, data))
         tx_data.append(structure(bt.Bytes, data))
         access_lists.append(structure(Optional[List[AccessList]], data))
+        authorization_list.append(structure(FixtureAuthorizationTuple, data))
 
     tx_args = {}
     for name, info in sorted(FixtureTransaction.model_fields.items()):
@@ -251,6 +254,8 @@ def _structure_state_fixture(type_: Union["_Annotation", Type[Q]], data: FuzzedD
             tx_args[name] = tx_data
         elif name == 'access_lists':
             tx_args[name] = access_lists
+        elif name == 'authorization_list':
+            tx_args[name] = authorization_list
         else:
             tx_args[name] = structure(info.annotation, data)
 
@@ -273,17 +278,18 @@ def _destructure_state_fixture(type_: Union["_Annotation", Type[Q]], instance: Q
         destructure(info.annotation, getattr(instance, name), buf)
 
     for ii in range(len(instance.transaction.gas_limit)):
-        destructure(FixtureForkPost, instance.post[ii], buf)
+        destructure(FixtureForkPost, instance.post["Prague"][ii], buf)
         destructure(bt.ZeroPaddedHexNumber, instance.transaction.gas_limit[ii], buf)
         destructure(bt.ZeroPaddedHexNumber, instance.transaction.value[ii], buf)
         destructure(bt.Bytes, instance.transaction.data[ii], buf)
         destructure(Optional[List[AccessList]], instance.transaction.access_lists[ii], buf)
+        destructure(FixtureAuthorizationTuple, instance.transaction.authorization_list[ii], buf)
 
     for name, info in sorted(FixtureTransaction.model_fields.items()):
         if info.exclude:
             continue
         assert info.annotation is not None
-        if name in ('gas_limit', 'value', 'data'):
+        if name in ('gas_limit', 'value', 'data', 'access_lists', 'authorization_list'):
             continue
         destructure(info.annotation, getattr(instance.transaction, name), buf)
 

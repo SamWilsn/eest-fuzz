@@ -14,23 +14,18 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from ._utils import unpick_value_in_list
-from .fuzz import Fuzz
+from struct import pack
 from .destructure import Destructure
-from typing import Type, TypeVar
-from atheris import FuzzedDataProvider  # type: ignore[attr-defined]
-from pydantic import BaseModel
-from typing_extensions import assert_type
-from enum import Enum
-
-T = TypeVar("T", bound=Enum)
-
-def structure(type_: Type[T], data: FuzzedDataProvider) -> T:
-    members = list(type_)
-    return data.PickValueInList(members)
 
 
-def destructure(type_: Type[T], instance: T, output: Destructure) -> None:
-    members = list(type_)
-    index = members.index(instance)
-    unpick_value_in_list(index, len(members), output)
+def unpick_value_in_list(index: int, count: int, output: Destructure) -> None:
+    if count < 2**8:
+        output.write_tail(pack("<B", index))
+    elif count < 2**16:
+        output.write_tail(pack("<H", index))
+    elif count < 2**32:
+        output.write_tail(pack("<I", index))
+    elif count < 2**64:
+        output.write_tail(pack("<Q", index))
+    else:
+        raise ValueError("too many items in list")

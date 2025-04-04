@@ -1,3 +1,4 @@
+from difflib import Differ
 from datetime import timedelta
 from eest_fuzz.destructure import Destructure
 from typing import Type, Union
@@ -12,6 +13,7 @@ import pytest
 from pathlib import Path
 from ethereum_test_specs.state import StateTest
 from ethereum_test_fixtures.state import StateFixture, FixtureEnvironment
+from pydantic import BaseModel
 
 TYPES = [
     bt.Hash,
@@ -35,7 +37,7 @@ TYPES = [
 
 @pytest.mark.parametrize("type_,", TYPES)
 @given(value=binary())
-@settings(deadline=timedelta(milliseconds=10000))  # TODO: investigate slow
+@settings(deadline=timedelta(milliseconds=15000))  # TODO: investigate slow
 
 # Generally Intersting
 @example(value=b"")
@@ -103,10 +105,20 @@ def test_round_trip(type_: Union[_Annotation, Type], value: bytes) -> None:
     pre = structure(type_, FuzzedDataProvider(value))
     destructure(type_, pre, buf)
     post = structure(type_, FuzzedDataProvider(buf.build()))
+
+    if issubclass(type_, StateTest):
+        pre._t8n_call_counter = 0
+        post._t8n_call_counter = 0
+
     try:
         assert pre == post # , f"{value} -> {buf.build()}"
     except:
-        for name, info in post.model_fields.items():
-            if getattr(pre, name) != getattr(post, name):
-                raise Exception(f"pre.{name} = {getattr(pre, name)}, post.{name} = {getattr(post, name)}")
+        pre_lines = pre.model_dump_json(indent=2).splitlines()
+        post_lines = post.model_dump_json(indent=2).splitlines()
+
+        if pre_lines == post_lines:
+            raise Exception("missing __eq__ impl")
+
+        diff = Differ().compare(pre_lines, post_lines)
+        print("\n".join(diff))
         raise

@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from ._utils import unpick_value_in_list
 from .destructure import Destructure
 from .fuzz import Fuzz
 from types import UnionType
@@ -60,7 +61,7 @@ def destructure(type_: Union["_Annotation", Type[T]], instance: T, output: Destr
     elif origin in (Dict, Mapping, dict, CollectionsMapping):
         return _destructure_dict(origin, get_args(type_), instance, output)
     elif origin is Annotated:
-        return registry_destructure(get_args(type_)[0], data)
+        return registry_destructure(get_args(type_)[0], instance, output)
     elif type_ is Any:
         return None
     else:
@@ -112,7 +113,7 @@ def _destructure_union(origin, args, instance, output: Destructure) -> None:
     if found is None:
         raise Exception("no matching union variant")
 
-    _unpick_value_in_list(found, len(args), output)
+    unpick_value_in_list(found, len(args), output)
     registry_destructure(args[found], instance, output)
 
 
@@ -152,19 +153,6 @@ def _matches_annotation(instance, ann) -> bool:
         return True
     else:
         raise NotImplementedError(f"unsupported annotation {origin} ({ann})")
-
-
-def _unpick_value_in_list(index: int, count: int, output: Destructure) -> None:
-    if count < 2**8:
-        output.write_tail(pack("<B", index))
-    elif count < 2**16:
-        output.write_tail(pack("<H", index))
-    elif count < 2**32:
-        output.write_tail(pack("<I", index))
-    elif count < 2**64:
-        output.write_tail(pack("<Q", index))
-    else:
-        raise ValueError("too many items in list")
 
 
 def _destructure_list(origin, args, instance, output: Destructure) -> None:
